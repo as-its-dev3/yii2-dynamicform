@@ -66,6 +66,10 @@ class DynamicFormWidget extends \yii\base\Widget
      */
     public $min = 1;
     /**
+     * @var bool 當使用Pjax時，開啟此開關
+     */
+    public $usePjax = false;
+    /**
      * @var string
      */
     private $_options;
@@ -202,7 +206,11 @@ class DynamicFormWidget extends \yii\base\Widget
         DynamicFormAsset::register($view);
 
         // add a click handler for the clone button
-        $js = 'jQuery("#' . $this->formId . '").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
+        if ($this->usePjax) {
+            $js = 'jQuery("#' . $this->formId . '").off("click").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
+        } else {
+            $js = 'jQuery("#' . $this->formId . '").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
+        }
         $js .= "    e.preventDefault();\n";
         $js .= '    jQuery(".' .  $this->widgetContainer . '").triggerHandler("beforeInsert", [jQuery(this)]);' . "\n";
         $js .= '    jQuery(".' .  $this->widgetContainer . '").yiiDynamicForm("addItem", '. $this->_hashVar . ", e, jQuery(this));\n";
