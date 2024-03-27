@@ -255,6 +255,12 @@ class DynamicFormWidget extends \yii\base\Widget
     public function run()
     {
         $content = ob_get_clean();
+        // Check if the content contains HTML entities.
+        if (preg_match('/&[#a-zA-Z0-9]+;/', $content))
+        {
+            // If the content contains HTML entities, convert them to ensure proper display.
+            $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+        }
         $crawler = new Crawler();
         $crawler->addHTMLContent($content, \Yii::$app->charset);
         $results = $crawler->filter($this->widgetItem);
