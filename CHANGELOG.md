@@ -1,5 +1,16 @@
 # yii2-dynamicform change Log
 
+## [v2.0.5 (2024-03-27)](https://github.com/as-its-dev3/yii2-dynamicform/compare/v2.0.5...v2.0.4)
+
+- Enh: Add detailed comments.
+- Enh: Allows specifying encoding.
+- Bug: Convert encoding when template content is HTML-ENTITIES encoded.
+
+## [v2.0.4 (2023-05-19)](https://github.com/as-its-dev3/yii2-dynamicform/compare/v2.0.4...v2.0.3)
+
+- Bug: Fix select2 method adjustment.
+- Enh: conditionally execute remove "error/success" css class.
+- Enh: Support using Pjax.
 
 ## [v2.0.3 (2020-05-18)](https://github.com/wbraganca/yii2-dynamicform/compare/v2.0.3...v2.0.2)
 
