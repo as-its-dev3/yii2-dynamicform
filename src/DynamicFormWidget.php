@@ -75,6 +75,10 @@ class DynamicFormWidget extends \yii\base\Widget
      */
     public $usePjax = false;
     /**
+     * @var null|string Whether to enforce a specific encoding. If set to null, it means no specific encoding is designated and will follow the `Yii::$app->charset` setting.
+     */
+    public $charset = null;
+    /**
      * @var string Options for the widget in JSON format. This is for internal use.
      */
     protected $_options;
@@ -129,6 +133,10 @@ class DynamicFormWidget extends \yii\base\Widget
         if (empty($this->formFields) || !is_array($this->formFields))
         {
             throw new InvalidConfigException("The 'formFields' property must be set.");
+        }
+        if (empty($this->charset))
+        {
+            $this->charset = Yii::$app->charset;
         }
 
         $this->initOptions();
@@ -275,10 +283,10 @@ class DynamicFormWidget extends \yii\base\Widget
 
         // Use Crawler to process the content further, if necessary.
         $crawler = new Crawler();
-        $crawler->addHTMLContent($content, \Yii::$app->charset);
+        $crawler->addHTMLContent($content, $this->charset);
         // Extract the first widget item from the content to use as a template.
         $results = $crawler->filter($this->widgetItem);
-        $document = new \DOMDocument('1.0', \Yii::$app->charset);
+        $document = new \DOMDocument('1.0', $this->charset);
         $document->appendChild($document->importNode($results->first()->getNode(0), true));
         // Save the processed template back to the widget's options.
         $this->_options['template'] = trim($document->saveHTML());
@@ -326,7 +334,7 @@ class DynamicFormWidget extends \yii\base\Widget
     private function removeItems($content)
     {
         $crawler = new Crawler();
-        $crawler->addHTMLContent($content, \Yii::$app->charset);
+        $crawler->addHTMLContent($content, $this->charset);
         $crawler
             ->filter($this->widgetItem)
             ->each(function ($nodes) {
