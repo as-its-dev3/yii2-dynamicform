@@ -14,107 +14,120 @@ use yii\base\InvalidConfigException;
 use Symfony\Component\DomCrawler\Crawler;
 
 /**
- * yii2-dynamicform is widget to yii2 framework to clone form elements in a nested manner, maintaining accessibility.
+ * yii2-dynamicform is a widget for the Yii2 framework that allows for cloning form elements in a nested manner,
+ * maintaining accessibility. It supports dynamic insertion and deletion of form items, with optional PJAX support for AJAX scenarios.
  *
  * @author Wanderson Bragança <wanderson.wbc@gmail.com>
+ * @link https://github.com/as-its-dev3/yii2-dynamicform
  */
 class DynamicFormWidget extends \yii\base\Widget
 {
+    /**
+     * @var string The name of the widget.
+     */
     const WIDGET_NAME = 'dynamicform';
     /**
-     * @var string
+     * @var string The container CSS class for the widget.
      */
     public $widgetContainer;
-     /**
-     * @var string
+    /**
+     * @var string The body CSS class of the widget where items will be cloned.
      */
     public $widgetBody;
     /**
-     * @var string
+     * @var string The item CSS class that will be cloned.
      */
     public $widgetItem;
     /**
-     * @var string
+     * @var string The limit of how many times an item can be cloned.
      */
     public $limit = 999;
     /**
-     * @var string
+     * @var string The CSS class or ID of the insert button.
      */
     public $insertButton;
-     /**
-     * @var string
+    /**
+     * @var string The CSS class or ID of the delete button.
      */
     public $deleteButton;
     /**
-     * @var string 'bottom' or 'top';
+     * @var string 'bottom' or 'top'; the position where a new item will be inserted relative to other items.
      */
     public $insertPosition = 'bottom';
-     /**
-     * @var Model|ActiveRecord the model used for the form
+    /**
+     * @var \yii\base\Model|\yii\db\ActiveRecord The model used for the form. This model is utilized for generating field IDs and names.
      */
     public $model;
     /**
-     * @var string form ID
+     * @var string The ID of the form.
      */
     public $formId;
     /**
-     * @var array fields to be validated.
+     * @var array The fields to be validated. These should correspond to attributes of the model.
      */
     public $formFields;
     /**
-     * @var integer
+     * @var integer The minimum number of items required. Defaults to 1.
      */
     public $min = 1;
     /**
-     * @var bool 當使用Pjax時，開啟此開關
+     * @var bool Whether to use PJAX. This should be set to true when using PJAX to ensure proper functionality.
      */
     public $usePjax = false;
     /**
-     * @var string
+     * @var string Options for the widget in JSON format. This is for internal use.
      */
-    private $_options;
+    protected $_options;
     /**
-     * @var string
+     * @var array Valid positions for inserting a new item. For internal use.
      */
-    private $_insertPositions = ['bottom', 'top'];
+    protected $_insertPositions = ['bottom', 'top'];
     /**
-     * @var string the hashed global variable name storing the pluginOptions.
+     * @var string The name of the hashed global variable storing the plugin options. For internal use.
      */
-    private $_hashVar;
+    protected $_hashVar;
     /**
-     * @var string the Json encoded options.
+     * @var string The JSON encoded options. For internal use.
      */
-    private $_encodedOptions = '';
+    protected $_encodedOptions = '';
 
     /**
-     * Initializes the widget.
+     * Initializes the widget by setting up configurations and validating the provided options.
      *
-     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\base\InvalidConfigException If configuration validations fail.
      */
     public function init()
     {
+        // The parent init call is made to ensure proper initialization sequence.
         parent::init();
 
-        if (empty($this->widgetContainer) || (preg_match('/^\w{1,}$/', $this->widgetContainer) === 0)) {
+        if (empty($this->widgetContainer) || (preg_match('/^\w{1,}$/', $this->widgetContainer) === 0))
+        {
             throw new InvalidConfigException('Invalid configuration to property "widgetContainer". 
                 Allowed only alphanumeric characters plus underline: [A-Za-z0-9_]');
         }
-        if (empty($this->widgetBody)) {
+        if (empty($this->widgetBody))
+        {
             throw new InvalidConfigException("The 'widgetBody' property must be set.");
         }
-        if (empty($this->widgetItem)) {
+        if (empty($this->widgetItem))
+        {
             throw new InvalidConfigException("The 'widgetItem' property must be set.");
         }
-        if (empty($this->model) || !$this->model instanceof \yii\base\Model) {
+        if (empty($this->model) || !$this->model instanceof \yii\base\Model)
+        {
             throw new InvalidConfigException("The 'model' property must be set and must extend from '\\yii\\base\\Model'.");
         }
-        if (empty($this->formId)) {
+        if (empty($this->formId))
+        {
             throw new InvalidConfigException("The 'formId' property must be set.");
         }
-        if (empty($this->insertPosition) || ! in_array($this->insertPosition, $this->_insertPositions)) {
+        if (empty($this->insertPosition) || ! in_array($this->insertPosition, $this->_insertPositions))
+        {
             throw new InvalidConfigException("Invalid configuration to property 'insertPosition' (allowed values: 'bottom' or 'top')");
         }
-        if (empty($this->formFields) || !is_array($this->formFields)) {
+        if (empty($this->formFields) || !is_array($this->formFields))
+        {
             throw new InvalidConfigException("The 'formFields' property must be set.");
         }
 
@@ -122,7 +135,7 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Initializes the widget options.
+     * Initializes the widget options. Sets up necessary configurations for dynamic form functionality.
      */
     protected function initOptions()
     {
@@ -137,8 +150,9 @@ class DynamicFormWidget extends \yii\base\Widget
         $this->_options['min']             = $this->min;
         $this->_options['fields']          = [];
 
-        foreach ($this->formFields as $field) {
-             $this->_options['fields'][] = [
+        foreach ($this->formFields as $field)
+        {
+            $this->_options['fields'][] = [
                 'id' => Html::getInputId($this->model, '[{}]' . $field),
                 'name' => Html::getInputName($this->model, '[{}]' . $field)
             ];
@@ -149,9 +163,9 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Registers plugin options by storing it in a hashed javascript variable.
+     * Registers the plugin options in a hashed JavaScript variable for use on the client side.
      *
-     * @param View $view The View object
+     * @param \yii\web\View $view The View object in which the JavaScript variable will be registered.
      */
     protected function registerOptions($view)
     {
@@ -159,7 +173,7 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Generates a hashed variable to store the options.
+     * Generates a hashed variable name to store the options, to ensure uniqueness.
      */
     protected function hashOptions()
     {
@@ -168,13 +182,14 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Returns the hashed variable.
+     * Returns the name of the hashed variable.
      *
-     * @return string
+     * @return string The hashed variable name.
      */
     protected function getHashVarName()
     {
-        if (isset(Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer])) {
+        if (isset(Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer]))
+        {
             return Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer];
         }
 
@@ -182,13 +197,14 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Register the actual widget.
+     * Registers the actual widget in the Yii application parameters to ensure it is only initialized once.
      *
-     * @return boolean
+     * @return boolean Whether the widget was successfully registered.
      */
     public function registerHashVarWidget()
     {
-        if (!isset(Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer])) {
+        if (!isset(Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer]))
+        {
             Yii::$app->params[self::WIDGET_NAME][$this->widgetContainer] = $this->_hashVar;
             return true;
         }
@@ -197,18 +213,21 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * Registers the needed assets.
+     * Registers the required assets for the widget, such as JavaScript handlers for the insert and delete actions.
      *
-     * @param View $view The View object
+     * @param \yii\web\View $view The View object in which the assets will be registered.
      */
     public function registerAssets($view)
     {
         DynamicFormAsset::register($view);
 
         // add a click handler for the clone button
-        if ($this->usePjax) {
+        if ($this->usePjax)
+        {
             $js = 'jQuery("#' . $this->formId . '").off("click").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
-        } else {
+        }
+        else
+        {
             $js = 'jQuery("#' . $this->formId . '").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
         }
         $js .= "    e.preventDefault();\n";
@@ -229,7 +248,9 @@ class DynamicFormWidget extends \yii\base\Widget
     }
 
     /**
-     * @inheritdoc
+     * Executes the widget. This is where the widget's HTML content is rendered.
+     * 
+     * @return void
      */
     public function run()
     {
@@ -241,7 +262,8 @@ class DynamicFormWidget extends \yii\base\Widget
         $document->appendChild($document->importNode($results->first()->getNode(0), true));
         $this->_options['template'] = trim($document->saveHTML());
 
-        if (isset($this->_options['min']) && $this->_options['min'] === 0 && $this->model->isNewRecord) {
+        if (isset($this->_options['min']) && $this->_options['min'] === 0 && $this->model->isNewRecord)
+        {
             $content = $this->removeItems($content);
         }
 
@@ -250,28 +272,37 @@ class DynamicFormWidget extends \yii\base\Widget
         $widgetRegistered = $this->registerHashVarWidget();
         $this->_hashVar = $this->getHashVarName();
 
-        if ($widgetRegistered) {
+        if ($widgetRegistered)
+        {
             $this->registerOptions($view);
             $this->registerAssets($view);
         }
 
-        echo Html::tag('div', $content, ['class' => $this->widgetContainer, 'data-dynamicform' => $this->_hashVar]);
+        echo Html::tag('div', $content, [
+            'class' => $this->widgetContainer,
+            'data-dynamicform' => $this->_hashVar,
+        ]);
     }
 
     /**
-     * Clear HTML widgetBody. Required to work with zero or more items.
-     *
-     * @param string $content
+     * Removes items from the HTML content of the widget body.
+     * This is used to start with a specific number of items,
+     * which can be zero or more, depending on the 'min' configuration.
+     * 
+     * @param string $content The HTML content from which items will be removed.
+     * @return string The modified HTML content with items removed.
      */
     private function removeItems($content)
     {
         $crawler = new Crawler();
         $crawler->addHTMLContent($content, \Yii::$app->charset);
-        $crawler->filter($this->widgetItem)->each(function ($nodes) {
-            foreach ($nodes as $node) {
-                $node->parentNode->removeChild($node);
-            }
-        });
+        $crawler
+            ->filter($this->widgetItem)
+            ->each(function ($nodes) {
+                foreach ($nodes as $node) {
+                    $node->parentNode->removeChild($node);
+                }
+            });
 
         return $crawler->html();
     }
