@@ -17,6 +17,8 @@ nbproject
 .buildpath
 .project
 .settings
+.vscode
+.history
 
 # composer itself is not needed
 composer.phar
