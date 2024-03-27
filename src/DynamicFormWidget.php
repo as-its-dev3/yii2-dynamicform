@@ -219,15 +219,20 @@ class DynamicFormWidget extends \yii\base\Widget
      */
     public function registerAssets($view)
     {
+        // Register the main asset bundle for the dynamic form widget.
         DynamicFormAsset::register($view);
 
-        // add a click handler for the clone button
+        // Setup JavaScript for handling the click event on the insert button. This includes cloning the form element,
+        // adding it to the form, and reinitializing any necessary JavaScript components or plugins.
+        // The JavaScript snippet varies slightly depending on whether PJAX is being used.
         if ($this->usePjax)
         {
+            // PJAX-specific setup: disables previous click handlers to prevent duplicate handlers after PJAX updates.
             $js = 'jQuery("#' . $this->formId . '").off("click").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
         }
         else
         {
+            // Regular setup: adds click handler directly.
             $js = 'jQuery("#' . $this->formId . '").on("click", "' . $this->insertButton . '", function(e) {'. "\n";
         }
         $js .= "    e.preventDefault();\n";
@@ -236,54 +241,74 @@ class DynamicFormWidget extends \yii\base\Widget
         $js .= "});\n";
         $view->registerJs($js, $view::POS_READY);
 
-        // add a click handler for the remove button
+        // Registers the JavaScript for handling the click event on the delete button.
+        // This typically involves removing the form element and updating any necessary states or counters.
         $js = 'jQuery("#' . $this->formId . '").on("click", "' . $this->deleteButton . '", function(e) {'. "\n";
         $js .= "    e.preventDefault();\n";
         $js .= '    jQuery(".' .  $this->widgetContainer . '").yiiDynamicForm("deleteItem", '. $this->_hashVar . ", e, jQuery(this));\n";
         $js .= "});\n";
         $view->registerJs($js, $view::POS_READY);
 
+        // Finally, initialize the dynamic form functionality with the configured options by invoking the yiiDynamicForm jQuery plugin.
         $js = 'jQuery("#' . $this->formId . '").yiiDynamicForm(' . $this->_hashVar .');' . "\n";
         $view->registerJs($js, $view::POS_LOAD);
     }
 
     /**
-     * Executes the widget. This is where the widget's HTML content is rendered.
+     * Executes the widget. This method is responsible for rendering the widget's content and initializing
+     * the dynamic form functionality. It captures the widget's output, processes it (e.g., converting HTML entities),
+     * and finally displays the processed content within a container div that is recognized by the JavaScript functionality.
      * 
      * @return void
      */
     public function run()
     {
+        // Capture the output that may have been generated during widget initialization.
         $content = ob_get_clean();
+
         // Check if the content contains HTML entities.
         if (preg_match('/&[#a-zA-Z0-9]+;/', $content))
         {
             // If the content contains HTML entities, convert them to ensure proper display.
             $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
         }
+
+        // Use Crawler to process the content further, if necessary.
         $crawler = new Crawler();
         $crawler->addHTMLContent($content, \Yii::$app->charset);
+        // Extract the first widget item from the content to use as a template.
         $results = $crawler->filter($this->widgetItem);
         $document = new \DOMDocument('1.0', \Yii::$app->charset);
         $document->appendChild($document->importNode($results->first()->getNode(0), true));
+        // Save the processed template back to the widget's options.
         $this->_options['template'] = trim($document->saveHTML());
 
+        // If 'min' option is set to zero and the model is a new record,
+        // remove all initial items from the content.
         if (isset($this->_options['min']) && $this->_options['min'] === 0 && $this->model->isNewRecord)
         {
             $content = $this->removeItems($content);
         }
 
+        // Generate and store a unique hash for this widget instance's options.
         $this->hashOptions();
+        // Retrieve the view object to register assets.
         $view = $this->getView();
+        // Register this widget instance, ensuring it's initialized only once.
         $widgetRegistered = $this->registerHashVarWidget();
+        // Retrieve the unique hash variable name for this instance.
         $this->_hashVar = $this->getHashVarName();
 
+        // If the widget was successfully registered,
+        // proceed with registering JavaScript options and assets.
         if ($widgetRegistered)
         {
             $this->registerOptions($view);
             $this->registerAssets($view);
         }
 
+        // Finally, output the widget's content wrapped in a div,
+        // with the necessary data attributes for JavaScript interaction.
         echo Html::tag('div', $content, [
             'class' => $this->widgetContainer,
             'data-dynamicform' => $this->_hashVar,
