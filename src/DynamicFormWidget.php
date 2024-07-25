@@ -278,7 +278,11 @@ class DynamicFormWidget extends \yii\base\Widget
         if (preg_match('/&[#a-zA-Z0-9]+;/', $content))
         {
             // If the content contains HTML entities, convert them to ensure proper display.
-            $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+            if (version_compare(phpversion(), '8.2', '>=')) {
+                $content = mb_encode_numericentity(htmlspecialchars_decode(htmlentities($content, ENT_NOQUOTES, 'UTF-8', false), ENT_NOQUOTES), [0x80, 0x10FFFF, 0, ~0], 'UTF-8');
+            } else {
+                $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+            }
         }
 
         // Use Crawler to process the content further, if necessary.
